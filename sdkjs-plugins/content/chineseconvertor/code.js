@@ -1,5 +1,3 @@
-
-
 // console.log("插件初始化开始");
 
 // 初始化插件
@@ -9,8 +7,6 @@ window.Asc.plugin.init = function() {
 
 // 上下文菜单显示事件
 Asc.plugin.attachEvent("onContextMenuShow", (options) => {
-    console.log("onContextMenuShow ", options);
-
     const items = {
         guid: window.Asc.plugin.guid,
         items: [{
@@ -94,7 +90,7 @@ function core(id, selectedText) {
 
     window.Asc.plugin.executeMethod("GetDocumentLang", [], function(lang) {
         if (lang == "zh-CN") {
-            showToast("操作成功！")
+            showToast("成功!")
         } else {
             showToast("Success!")
         }
@@ -133,8 +129,16 @@ function replaceTextSmart(replacementText){
 }
 
 function textSeperator(text) {
+    // Only apply list marker preservation for Word documents
+    // For cells, tabs are cell separators and should not be preserved
+    
     // Replace tabs that follow list markers with a placeholder
-    const textWithPlaceholder = text.replace(/([0-9]+\.|[a-z]+\.|[ivxlcdm]+\.|[·•○▪►\-*§])\t/gi, '___LIST_TAB___');
+    // ONLY match list markers that appear at the start of a line (after \r\n or at text start)
+    // This prevents matching "1." in table cells followed by tab to next cell
+    const textWithPlaceholder = text.replace(
+        /(?<=^|\r\n)([0-9]+[.)]|[a-z]+[.)]|[ivxlcdm]+[.)]|[·•vü¨–○oØ▪►\-*§])\t/gim,
+        '___LIST_TAB___'
+    );
 
     // Split only on \r\n (Windows line breaks) or \t (tabs)
     // Match \r\n as a single unit first, then fall back to \t
@@ -149,7 +153,7 @@ function textSeperator(text) {
         }, []);
     
         
-    // Restore the list tabs
+    // Restore the list tabs (only relevant for Word documents)
     const result = seperatedText.map(item => item.replace(/___LIST_TAB___/g, ''));
     
     if (result.length > 0 && result[result.length - 1] === '')result.pop();
