@@ -1,4 +1,6 @@
-// console.log("插件初始化开始");
+const tr = (s) =>
+    (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.tr === "function")
+        ? window.Asc.plugin.tr(s) : s;
 
 // 初始化插件
 window.Asc.plugin.init = function() {
@@ -63,7 +65,7 @@ function getSelectedText(id, preselectedText = null) {
         if (data && data.trim() !== '') {
             core(id, data);
         } else {
-            showToast("Please select some text first", "#FFAA00", 3000);
+            showToast(tr("Please select some text first"), "#FFAA00", 3000);
         }
     });
 }
@@ -87,14 +89,7 @@ function core(id, selectedText) {
     } else if (id == "removePinyin") {
         replaceTextSmart(removePinyinAnnotations(selectedText));
     }
-
-    window.Asc.plugin.executeMethod("GetDocumentLang", [], function(lang) {
-        if (lang == "zh-CN") {
-            showToast("成功!")
-        } else {
-            showToast("Success!")
-        }
-    });
+    showToast(tr("Success!"));
 }
 
 function replaceTranslatedText(selectedText, fileType, curLang, targetLang){
@@ -151,8 +146,7 @@ function textSeperator(text) {
             if (idx > 0 && /(\r\n|\t)/.test(src[idx - 1]) && /(\r\n|\t)/.test(item)) arr.push('');
             return arr;
         }, []);
-    
-        
+      
     // Restore the list tabs (only relevant for Word documents)
     const result = seperatedText.map(item => item.replace(/___LIST_TAB___/g, ''));
     
@@ -188,7 +182,7 @@ function addPinyinAnnotations(text) {
             for(let j = 0; j < char.length; j++) {
                 const ch = char[j];
                 if (/[\u4e00-\u9fa5]/.test(ch)) {
-                    const py = filteredPinyins[idx]; // 直接取对应的拼音
+                    const py = filteredPinyins[idx];
                     lineResult += `${ch}(${py})`;
                     idx++;
                 } else {
@@ -244,10 +238,10 @@ function showToast(message, backgroundColor = "#4BB543", duration = 1000) {
 }
 
 window.Asc.plugin.onTranslate = function() {
-    document.getElementById("operatorHints").innerHTML = window.Asc.plugin.tr("Please select the text you want to operate and click the corresponding operation button.");
-    document.getElementById("button1").innerHTML = window.Asc.plugin.tr("Simplified → Traditional");
-    document.getElementById("button2").innerHTML = window.Asc.plugin.tr("Traditional → Simplified");
-    document.getElementById("button3").innerHTML = window.Asc.plugin.tr("Add pinyin");
-    document.getElementById("button4").innerHTML = window.Asc.plugin.tr("Remove pinyin");
-    document.getElementById("operatorHints2").innerHTML = window.Asc.plugin.tr("Tip: Right-click after selecting text to use the function directly.");
+    document.getElementById("operatorHints").innerHTML = tr("Please select the text you want to operate and click the corresponding operation button.");
+    document.getElementById("button1").innerHTML = tr("Simplified → Traditional");
+    document.getElementById("button2").innerHTML = tr("Traditional → Simplified");
+    document.getElementById("button3").innerHTML = tr("Add pinyin");
+    document.getElementById("button4").innerHTML = tr("Remove pinyin");
+    document.getElementById("operatorHints2").innerHTML = tr("Tip: Right-click after selecting text to use the function directly.");
 }
