@@ -36,5 +36,6 @@
 	{ "name": "videoembedder", "discussion": "" },
 	{ "name": "mathpix", "discussion": "" },
 	{ "name": "chineseconvertor", "discussion": "" },
-	{ "name": "chineseautoformattool", "discussion": "" }
+	{ "name": "chineseautoformattool", "discussion": "" },
+	{ "name": "icons", "discussion": "" }
 ]
