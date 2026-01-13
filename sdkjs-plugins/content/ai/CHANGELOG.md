@@ -130,3 +130,10 @@
 * Add Grammar & Spelling functionality.
 * Add OpenRouter provider.
 * Refactoring helper functions.
+
+## 3.0.1
+* Bug fix.
+* Translations added.
+
+## 3.0.2
+* Bug fix.
