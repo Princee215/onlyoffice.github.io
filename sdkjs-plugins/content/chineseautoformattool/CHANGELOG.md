@@ -21,4 +21,3 @@
 - Occasional cache issue where code changes did not take effect.
 
 **Files:** `code.js`, `panels/space-options.html`, `panels/report.html`
-

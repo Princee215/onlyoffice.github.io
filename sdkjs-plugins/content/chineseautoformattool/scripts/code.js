@@ -11,6 +11,7 @@
     let winSetting = null;
     let winOptions = null;
     let winReport = null;
+    let winInfo = null;
     let reportApplyTimer = null; // ⬅️ 新增
 
     function readJSON(key, fallback) {
@@ -71,18 +72,12 @@
             false,
             true,
             function () {
-                console.log(
-                    "[SMART-DEBUG] PIPE-C probe -> shapes:",
-                    Asc.scope.__stats || []
-                );
-                window.Asc.plugin.executeMethod("ShowNotice", [
-                    "PPT Probe: shapes=" + ((Asc.scope.__stats || []).length || 0),
-                ]);
+                getInfoModal("PPT Probe: shapes=" + ((Asc.scope.__stats || []).length || 0));
             }
         );
     };
 
-    // 2) 在控制台执行 __pptDryApply()：尝试往第1个形状首段写入测试串
+    // 2) Execute __pptDryApply() in the console: attempting to write a test string into the first paragraph of the first shape.
     window.__pptDryApply = function () {
         const plugin = window.Asc.plugin;
         plugin.callCommand(
@@ -117,13 +112,7 @@
             false,
             true,
             function () {
-                console.log(
-                    "[SMART-DEBUG] PIPE-C dry-apply ->",
-                    Asc.scope.__ok ? "OK" : "NO-PARAGRAPH/NO-SELECT"
-                );
-                window.Asc.plugin.executeMethod("ShowNotice", [
-                    Asc.scope.__ok ? "Dry apply OK" : "Dry apply failed",
-                ]);
+                getInfoModal(Asc.scope.__ok ? "Dry apply OK" : "Dry apply failed");
             }
         );
     };
@@ -134,14 +123,15 @@
         window.Asc && window.Asc.plugin ? window.Asc.plugin.tr(s) : s;
     // —— 本地化回调：词典就绪后，刷新工具栏文本与提示 ——
     window.Asc.plugin.onTranslate = function () {
+        getInfoModal(tr("The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above above to use the formatting features."));
         // ……你原来的 setText / 提示等本地化代码（如果有）……
         const items = getToolbarItems(); // 这里的 tabs[0].text 要用 tr("Chinese Auto-format Tool")
         if (!__toolbarAdded) {
-            // ✅ 第一次：用当前语言创建分页，tab 标题会用中文
+            // ✅ First time: Create the tab with current language, tab title will use the translated text
             window.Asc.plugin.executeMethod("AddToolbarMenuItem", [items]);
             __toolbarAdded = true;
         } else {
-            // ✅ 之后语言切换：只更新按钮文字/提示
+            // ✅ Subsequent language switches: Only update button text/tooltips
             window.Asc.plugin.executeMethod("UpdateToolbarMenuItem", [items]);
         }
     };
@@ -177,12 +167,10 @@
                                 return out.map((b) => b.replace(/\n+$/, "").trim());
                             })(data.lines);
 
-                    console.log("[SMART→PPT] blocks:", blocks.length, blocks);
-
                     if (typeof applyPptBlocks === "function" && blocks.length) {
                         applyPptBlocks(blocks); // 内部自带 callCommand 与段落选中
                     } else {
-                        plugin.executeMethod("ShowError", ["Nothing to apply for shapes."]);
+                        plugin.executeMethod("ShowError", [ tr("Nothing to apply for shapes.")]);
                     }
 
                     // 迟一点关掉报告窗，避免与命令体回调冲突
@@ -195,7 +183,6 @@
                         } catch (e) { }
                     }, 800);
                 } catch (e) {
-                    console.error("[SMART→PPT] apply failed:", e);
                     plugin.executeMethod("ShowError", ["PPT apply failed: " + e.message]);
                 }
                 return; // ✅ 已处理 PPT
@@ -248,21 +235,18 @@
             // Depends on runFormatCheck(text) in scripts/formatChecker.js
             results = runFormatCheck(selectedText, editorType);
         } catch (e) {
-            console.error("runFormatCheck error:", e);
             window.Asc.plugin.executeMethod("ShowError", [
                 tr("Detection failed: formatChecker.js is missing or has an error"),
             ]);
             return;
         }
 
-        console.log("----selected Text -- ", JSON.stringify(selectedText));
         const lines =
             editorType === "cell"
                 ? selectedText.split(/\t|\r?\n/)
                 : selectedText.split(/\r?\n/); // 不过滤空行，保持行数一致
         const fixed = results.map((r) => r.fixed);
         const report = results.filter((r) => r.errors && r.errors.length > 0);
-        console.log("---- Format Check Results ----", results, report);
 
         if(lines[lines.length - 1] === ""){
             lines.pop();
@@ -340,7 +324,6 @@
         // A. 强制转全角
         this.attachToolbarMenuClickEvent("quanjiao", function () {
             const plugin = window.Asc.plugin;
-            const tr = window.tr || ((s) => s);
 
             // 供命令体读取的配置
             Asc.scope.__punct__ = {
@@ -380,20 +363,15 @@
                 NewLineSeparator: "\n",
             };
             plugin.executeMethod("GetSelectedText", [props], function (t) {
-                console.log('selectedText', t);
                 const picked = (t || "").replace(/\r\n?/g, "\n");
-                console.log("--- picked text ---", JSON.stringify(picked));
 
                 // 公用转换（编辑器侧，非命令体）
                 const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                 const convertLine = (line) => {
                     if (!line) return line;
-                    console.log("--- convert line ---", line);
                     const map = Asc.scope.__punct__.map;
                     const on = Asc.scope.__punct__.settings.punctuation || [];
-                    console.log('----map---', map, '---on---', on);
                     let v = line.replace(/(?:\.{3,}|…+)/g, "……");
-                    console.log('---- after ellipsis ---', v);
                     for (const [half, full] of Object.entries(map)) {
                         if (on.length === 0 || on.includes(full))
                             v = v.replace(new RegExp(esc(half), "g"), full);
@@ -405,22 +383,16 @@
                     const out = picked.split(/\t|\r?\n/).map(convertLine);
                     if(out[out.length - 1] === "") out.pop();
                     Asc.scope._lines = out;
-                    console.log("--- converted lines ---", out);
                     plugin.callCommand(
                         function () {
-                            if (
-                                Asc.scope._lines &&
-                                typeof Api.ReplaceTextSmart === "function"
-                            ) {
+                            if ( Asc.scope._lines && typeof Api.ReplaceTextSmart === "function") {
                                 Api.ReplaceTextSmart(Asc.scope._lines); // 保留原样式地替换
                             }
                         },
                         false,
                         true,
                         function () {
-                            plugin.executeMethod("ShowNotice", [
-                                tr("Converted selection: ") + out.length + tr(" line(s)."),
-                            ]);
+                            getInfoModal(tr("Converted selection: ") + out.length + tr(" line(s)."));
                         }
                     );
                     return; // 已处理，退出
@@ -429,8 +401,6 @@
                 // =============== Excel 分支（命令体内重建转换函数！） ===============
                 plugin.callCommand(
                     function () {
-                        Asc.scope._excelDone = false;
-
                         function escIn(x) {
                             return x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                         }
@@ -460,8 +430,7 @@
                                     typeof rng.SetValue === "function"
                                 ) {
                                     var val = rng.GetValue(); // string 或 二维数组 :contentReference[oaicite:4]{index=4}
-                                    var changed = false,
-                                        out;
+                                    var changed = false, out;
 
                                     function convCell(v) {
                                         if (typeof v !== "string") return v;
@@ -482,22 +451,20 @@
                                             } else out.push(convCell(row));
                                         }
                                     } else out = convCell(val);
-
                                     if (changed) {
                                         rng.SetValue(out);
-                                        Asc.scope._excelDone = true;
+                                        return true;
                                     } // 写回 :contentReference[oaicite:5]{index=5}
+                                    return false;
                                 }
                             }
                         } catch (e) { }
                     },
                     false,
                     true,
-                    function () {
-                        if (Asc.scope._excelDone) {
-                            plugin.executeMethod("ShowNotice", [
-                                tr("Converted punctuation in selected cells."),
-                            ]);
+                    function (returnValue) {
+                        if (returnValue) {
+                            getInfoModal(tr("Converted punctuation in selected cells."));
                             return; // Excel 成功，结束
                         }
 
@@ -608,15 +575,13 @@
                                     }
                                     if (changed) hit++;
                                 }
-                                Asc.scope._pptDone = hit > 0;
+                                return hit > 0;
                             },
                             false,
                             true,
-                            function () {
-                                if (Asc.scope._pptDone)
-                                    plugin.executeMethod("ShowNotice", [
-                                        tr("Converted punctuation for text in shape(s)."),
-                                    ]);
+                            function (returnValue) {
+                                if (returnValue)
+                                    getInfoModal(tr("Converted punctuation for text in shape(s)."));
                                 // 否则静默
                             }
                         );
@@ -628,7 +593,6 @@
         // B. 强制转半角
         this.attachToolbarMenuClickEvent("banjiao", function () {
             const plugin = window.Asc.plugin;
-            const tr = window.tr || ((s) => s);
 
             // 供命令体读取的配置
             Asc.scope.__punct__ = {
@@ -707,9 +671,7 @@
                         false,
                         true,
                         function () {
-                            plugin.executeMethod("ShowNotice", [
-                                tr("Converted selection: ") + out.length + tr(" line(s)."),
-                            ]);
+                            getInfoModal(tr("Converted selection: ") + out.length + tr(" line(s)."));
                         }
                     );
                     return; // 已处理，退出
@@ -718,8 +680,6 @@
                 // =============== Excel 分支（命令体内重建转换函数！） ===============
                 plugin.callCommand(
                     function () {
-                        Asc.scope._excelDone = false;
-
                         function escIn(x) {
                             return x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                         }
@@ -775,19 +735,18 @@
 
                                     if (changed) {
                                         rng.SetValue(out);
-                                        Asc.scope._excelDone = true;
+                                        return true;
                                     } // 写回
+                                    return false;
                                 }
                             }
                         } catch (e) { }
                     },
                     false,
                     true,
-                    function () {
-                        if (Asc.scope._excelDone) {
-                            plugin.executeMethod("ShowNotice", [
-                                tr("Converted punctuation in selected cells."),
-                            ]);
+                    function (returnValue) {
+                        if (returnValue) {
+                            getInfoModal(tr("Converted punctuation in selected cells."));
                             return; // Excel 成功，结束
                         }
 
@@ -902,16 +861,14 @@
                                     }
                                     if (changed) hit++;
                                 }
-                                Asc.scope._pptDone = hit > 0;
+                                return hit > 0;
                             },
                             false,
                             true,
-                            function () {
-                                if (Asc.scope._pptDone)
-                                    plugin.executeMethod("ShowNotice", [
-                                        tr("Converted punctuation for text in shape(s)."),
-                                    ]);
-                                // 否则静默
+                            function (returnValue) {
+                                if (returnValue)
+                                    getInfoModal(tr("Converted punctuation for text in shape(s)."));
+                                // Otherwise, remain silent.
                             }
                         );
                     }
@@ -923,9 +880,7 @@
         this.attachToolbarMenuClickEvent("zhineng", function () {
             // have to explore this ---------------------------------------
             const plugin = window.Asc.plugin;
-            const tr = plugin.tr || ((s) => s);
             const resolveUrl = window.resolveUrl || ((p) => p);
-            console.log("=== Smart convert button clicked ===");
 
             // —— 读取选区/内容（Word/Excel/PPT 通用）——
             const props = {
@@ -940,9 +895,7 @@
 
             // —— 首选：直接取“选中文本”（Word/可选中对象的场景）
             plugin.executeMethod("GetSelectedText", [props], function (s) {
-                console.log(">>> GetSelectedText:", s ? `Length ${s.length}` : "Empty");
                 if (s && s.trim()) {
-                    console.log(">>> ✅ Word Success");
                     localStorage.setItem("_smart_source_type", "word");
                     openPanel(s.replace(/\r\n?/g, "\n"));
                     return;
@@ -953,30 +906,21 @@
                     "GetSelectedContent",
                     [{ type: "text" }],
                     function (s2) {
-                        console.log(
-                            ">>> GetSelectedContent:",
-                            s2 ? `Length ${s2.length}` : "Empty"
-                        );
-                        console.log("---- selected text ---", JSON.stringify(s2));
                         if (s2 && s2.trim()) {
-                            console.log(">>> ✅ Generic text processed successfully");
                             localStorage.setItem("_smart_source_type", "word");
                             openPanel(s2.replace(/\r\n?/g, "\n"));
                             return;
                         }
 
                         // —— 进入命令体：尝试 Excel / PPT ——
-                        console.log(">>> 进入 callCommand (提取模式)");
                         plugin.callCommand(
                             function () {
-                                console.log(">>> [命令体内] 开始 (提取模式)");
                                 var resultText = "";
                                 var sourceType = "";
 
                                 // Excel：按选区取值（单元格 or 二维数组），序列化为行列文本
                                 try {
                                     if (typeof Api.GetActiveSheet === "function") {
-                                        console.log(">>> [命令体内] Excel");
                                         var ws = Api.GetActiveSheet();
                                         var rng = ws && ws.GetSelection && ws.GetSelection();
                                         if (!rng && typeof Api.GetSelection === "function")
@@ -995,10 +939,6 @@
                                                     }
                                                     resultText = lines.join("\n");
                                                 }
-                                                console.log(
-                                                    ">>> [命令体内] Excel 长度:",
-                                                    resultText.length
-                                                );
                                             }
                                         }
                                     }
@@ -1008,7 +948,6 @@
 
                                 // PPT：收集被选中/当前页对象 → 逐形状聚合段落文本（形状间用空行分隔）
                                 if (!resultText) {
-                                    console.log(">>> [命令体内] PPT");
                                     try {
                                         function getContent(draw) {
                                             try {
@@ -1029,7 +968,6 @@
                                                 ? sel.GetShapes()
                                                 : null;
                                         if (!Array.isArray(shapes)) shapes = shapes ? [shapes] : [];
-                                        console.log(">>> [命令体内] shapes:", shapes.length);
 
                                         if (shapes.length === 0) {
                                             var pres =
@@ -1055,10 +993,6 @@
                                                         } catch (e) { }
                                                     }
                                                     shapes = chosen.length ? chosen : all;
-                                                    console.log(
-                                                        ">>> [命令体内] 最终 shapes:",
-                                                        shapes.length
-                                                    );
                                                 }
                                             }
                                         }
@@ -1103,14 +1037,6 @@
                                                 shapeTexts.push(shapeText);
                                                 shapeIndices.push(sIdx);
                                                 paraCounts.push(paras.length);
-                                                console.log(
-                                                    ">>> [命令体内] 形状",
-                                                    sIdx,
-                                                    "段落数:",
-                                                    paras.length,
-                                                    "预览:",
-                                                    shapeText.substring(0, 20)
-                                                );
                                             }
                                         }
 
@@ -1120,12 +1046,6 @@
                                             Asc.scope._pptShapeCount = shapeTexts.length;
                                             Asc.scope._pptShapeIndices = shapeIndices;
                                             Asc.scope._pptParaCounts = paraCounts;
-                                            console.log(
-                                                ">>> [命令体内] PPT 形状数:",
-                                                shapeTexts.length,
-                                                "总长度:",
-                                                resultText.length
-                                            );
                                         }
                                     } catch (e) {
                                         console.error(">>> PPT 异常:", e);
@@ -1133,10 +1053,6 @@
                                 }
 
                                 // 写入 localStorage，让外层读取
-                                console.log(
-                                    ">>> [命令体内] 写入 localStorage，文本长度:",
-                                    resultText.length
-                                );
                                 try {
                                     if (resultText) {
                                         localStorage.setItem("_smart_temp_text", resultText);
@@ -1157,11 +1073,8 @@
                                                 JSON.stringify(Asc.scope._pptParaCounts)
                                             );
                                         }
-
-                                        console.log(">>> [命令体内] 写入成功，类型:", sourceType);
                                     } else {
                                         localStorage.setItem("_smart_ready", "0");
-                                        console.log(">>> [命令体内] 无内容");
                                     }
                                 } catch (e) {
                                     console.error(">>> localStorage 写入失败:", e);
@@ -1171,31 +1084,22 @@
                             false,
                             true,
                             function () {
-                                console.log(">>> callCommand 回调 (提取模式)");
                                 var ready = localStorage.getItem("_smart_ready");
-                                console.log(">>> _smart_ready:", ready);
 
                                 if (ready === "1") {
                                     var text = localStorage.getItem("_smart_temp_text");
-                                    console.log(
-                                        ">>> localStorage 读取长度:",
-                                        text ? text.length : 0
-                                    );
 
                                     localStorage.removeItem("_smart_temp_text");
                                     localStorage.removeItem("_smart_ready");
 
                                     if (text && text.trim()) {
-                                        console.log(">>> ✅ 打开面板");
                                         openPanel(text);
                                     } else {
-                                        console.log(">>> ❌ 文本为空");
                                         plugin.executeMethod("ShowError", [
                                             tr("Please select the text to diagnose!"),
                                         ]);
                                     }
                                 } else {
-                                    console.log(">>> ❌ 未获取到内容");
                                     plugin.executeMethod("ShowError", [
                                         tr("Please select the text to diagnose!"),
                                     ]);
@@ -1208,9 +1112,6 @@
 
             // —— 打开空格策略选项面板 ——
             function openPanel(text) {
-                console.log(">>> openPanel call, length:", text.length);
-                console.log(">>> Content preview", JSON.stringify(text));
-
                 localStorage.setItem("smart_source_text", text);
                 localStorage.removeItem("spaceOptReady");
 
@@ -1268,7 +1169,6 @@
                     window.__pptApplyTimer = null;
 
                     const blocks = parseBlocks(raw);
-                    console.log(">>> [PPT] 解析得到形状块数:", blocks.length, blocks);
 
                     // 真正回填
                     applyPptBlocks(blocks);
@@ -1324,7 +1224,6 @@
                 }
 
                 const nBlocks = Asc.scope._pptBlocks.length; // 仅用于外层日志
-                console.log(">>> [PPT] 即将回填块数 =", nBlocks);
 
                 plugin.callCommand(
                     function () {
@@ -1386,16 +1285,6 @@
                                 return i;
                             });
 
-                        // ✅ 这里不要直接用外层变量名；都用 blocks（沙箱内变量）
-                        console.log(
-                            ">>> [命令体内] shapes:",
-                            shapes.length,
-                            "idxs:",
-                            idxs,
-                            "n(blocks)=",
-                            blocks.length
-                        );
-
                         var applied = 0,
                             n = Math.min(blocks.length, idxs.length);
                         for (var k = 0; k < n; k++) {
@@ -1409,13 +1298,6 @@
                             var p0 = paras[0];
                             var block = String(blocks[k] || "");
                             if (p0?.Select && typeof Api.ReplaceTextSmart === "function") {
-                                console.log(
-                                    ">>> [命令体内] 形状",
-                                    sIndex,
-                                    "整块回填（长度",
-                                    block.length,
-                                    "）"
-                                );
                                 p0.Select();
                                 Api.ReplaceTextSmart([block], "\t", "\n"); // 块内 \n 会自动分段
                                 applied++;
@@ -1428,11 +1310,7 @@
                     true,
                     function () {
                         try {
-                            window.Asc.plugin.executeMethod("ShowNotice", [
-                                "Applied to " +
-                                (Asc.scope._pptAppliedShapes || 0) +
-                                " shape(s).",
-                            ]);
+                            getInfoModal("Applied to " + (Asc.scope._pptAppliedShapes || 0) + " shape(s).");
                         } catch (e) { }
                         try {
                             if (typeof winReport !== "undefined" && winReport) {
@@ -1472,18 +1350,31 @@
         });
     }
 
-    // ---------------- 统一窗口关闭回调 ----------------
-    window.Asc.plugin.button = function (id, windowId) {
-        if (winSetting && windowId === winSetting.id) {
+    // ---------------- Unify window close callback ----------------
+    // Helper function to close window if it matches
+    function closeWindowIfMatch(win, windowId) {
+        if (win && windowId === win.id) {
             try {
-                winSetting.close();
+                win.close();
             } catch (e) { }
+            return true;
+        }
+        return false;
+    }
+
+    window.Asc.plugin.button = function (id, windowId) {
+        if (closeWindowIfMatch(winInfo, windowId)) {
+            localStorage.removeItem("info_message");
+            winInfo = null;
+            return;
+        }
+        if (closeWindowIfMatch(winSetting, windowId)) {
             winSetting = null;
             return;
         }
 
         if (winOptions && windowId === winOptions.id) {
-            // ⬇️ 新增：id===0 为 Confirm；id===1 为 Cancel
+            // ⬇️ Added: id === 0 represents Confirm; id === 1 represents Cancel.
             if (id === 0) {
                 localStorage.setItem("spaceOptReady", "1"); // 交给后续逻辑判断/推进
             } else {
@@ -1507,7 +1398,7 @@
 
         if (winReport && windowId === winReport.id) {
             if (id === 0) {
-                localStorage.setItem("reportApplyNow", "1"); // 触发子页执行
+                localStorage.setItem("reportApplyNow", "1"); // Trigger child page execution
 
                 // ✅ 新增：兜底轮询等待子页产出结果（避免消息通道被拦截时卡住）
                 if (reportApplyTimer) {
@@ -1592,11 +1483,11 @@
 
             const replaceResult = localStorage.getItem("batchReplaceResult");
 
-            // ☆ 新增功能：未点击“确定并保存”，直接点 × 关闭 → 弹错误提示
+            // New feature: If the user closes the dialog by clicking × without clicking “Confirm and Save”, an error message is displayed.
             if (closeReason === "closed_without_save") {
                 localStorage.removeItem("batchReplaceResult"); // 清理潜在脏数据
                 if (typeof showNotice === "function") {
-                    // 第二个参数 true 表示“错误/危险”风格（按你项目里的约定）
+                    // The second parameter true indicates the ‘error/danger’ style (as per your project’s convention).
                     showNotice("你没有保存任何需要修改的内容", true);
                 } else {
                     alert("你没有保存任何需要修改的内容");
@@ -1676,5 +1567,21 @@
                 },
             ],
         };
+    }
+
+    function getInfoModal(message){
+        localStorage.setItem("info_message", message || "");
+        winInfo = new window.Asc.PluginWindow();
+        winInfo.show({
+            url: resolveUrl("panels/info.html"),
+            description: tr("Info"),
+            isModal: true,
+            isVisual: true,
+            size: [400, 100],
+            EditorsSupport: ["word", "cell", "slide"],
+            buttons: [
+                { text: tr("OK"), primary: true }
+            ],
+        });
     }
 })(window);

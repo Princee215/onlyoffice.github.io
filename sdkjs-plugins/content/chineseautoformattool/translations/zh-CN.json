@@ -99,7 +99,7 @@
   "Conversion failed: paragraph count mismatch": "转换失败：段落数量不一致",
   "No fixable issues found": "未发现可修复问题",
 
-    "Double quotes": "双引号",
+  "Double quotes": "双引号",
   "Single quotes": "单引号",
   "Book title mark": "书名号",
   "Parentheses": "括号",
@@ -137,8 +137,14 @@
   "Converted half-width alphanumerics to full-width": "已将半角字母数字转为全角",
 
   "Removed spaces between consecutive Chinese characters": "中文与中文之间的空格已删除（按规则：汉字之间不保留空格）",
-  "Collapsed consecutive spaces to a single space": "存在连续空格，已收敛为单空格"
+  "Collapsed consecutive spaces to a single space": "存在连续空格，已收敛为单空格",
 
-
-
+  "The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above above to use the formatting features.": "插件已就绪，工具栏菜单已更新。请点击上方“中文自动格式工具”选项卡以使用格式化功能。",
+  "Nothing to apply for shapes.": "图形对象无可应用内容。",
+  "Converted selection: ": "已转换选中文本：",
+  "Converted punctuation in selected cells.": "已转换选中单元格内的标点符号。",
+  "Converted punctuation for text in shape(s).": "已转换图形对象中文字的标点符号。",
+  " line(s).": " 行。",
+  "Info": "信息",
+  "OK": "确定"
 }
