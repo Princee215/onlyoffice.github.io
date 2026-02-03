@@ -235,7 +235,6 @@ function runFormatCheck(text, editorType = "word") {
 
   const lines = editorType === 'cell' ? text.split(/\t|\r?\n/) : text.split(/\r?\n/);
   const results = [];
-  console.log("liness" , lines);
 
   // —— 常量与工具 —— //
   const CJK = '[\\u3400-\\u4DBF\\u4E00-\\u9FFF\\u3007]'; // 基本汉字 + 扩展 + 〇

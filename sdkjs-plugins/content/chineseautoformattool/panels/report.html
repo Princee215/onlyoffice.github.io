@@ -192,8 +192,6 @@
       }
     }
 
-    console.log('-----i am report', idxMap, original);
-
     renderStat(original.length, idxMap.length, idxMap);
     renderTable(idxMap);
     bindActions(idxMap, original, fixed);
@@ -277,7 +275,6 @@
     }
 
     function renderTable(rows){
-      console.log('rowssss', rows);
       const tbody = document.getElementById('tbody');
       tbody.innerHTML = '';
       rows.forEach(({idx, original, fixed, errors})=>{
@@ -298,7 +295,6 @@
         tdRule.appendChild(renderRule(errors));
         tr.appendChild(tdRule);
         
-        console.log('--- HTML', escapeHTML(original || '').trim());
         const tdOriginal = document.createElement('td');
         tdOriginal.innerHTML = `<div class="code">${escapeHTML(original || '').trim() || '<span class="empty">'+t('(empty line)')+'</span>'}</div>`;
         tr.appendChild(tdOriginal);
@@ -380,11 +376,8 @@
         try { localStorage.setItem('reportApplyReady', '1'); } catch (e) { }
 
         // ... 比如在 applySelectedAndClose 函数内部 ...
-        console.log('>>> [report.html] 准备发送 apply-now 消息，内容:', applyLines); // <--- 添加
         sendToHost({ type: 'apply-now', lines: applyLines });
-        console.log('>>> [report.html] 消息已发送。'); // <--- 添加
         
-
         sendToHost({ type: 'apply-now', lines: applyLines });
 
         showToast(t('Saved and applied selected changes.'));
