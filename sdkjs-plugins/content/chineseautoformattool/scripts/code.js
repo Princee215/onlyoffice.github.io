@@ -123,7 +123,7 @@
         window.Asc && window.Asc.plugin ? window.Asc.plugin.tr(s) : s;
     // —— 本地化回调：词典就绪后，刷新工具栏文本与提示 ——
     window.Asc.plugin.onTranslate = function () {
-        getInfoModal(tr("The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above above to use the formatting features."));
+        getInfoModal(tr("The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above to use the formatting features."));
         // ……你原来的 setText / 提示等本地化代码（如果有）……
         const items = getToolbarItems(); // 这里的 tabs[0].text 要用 tr("Chinese Auto-format Tool")
         if (!__toolbarAdded) {

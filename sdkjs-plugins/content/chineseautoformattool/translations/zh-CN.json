@@ -139,7 +139,7 @@
   "Removed spaces between consecutive Chinese characters": "中文与中文之间的空格已删除（按规则：汉字之间不保留空格）",
   "Collapsed consecutive spaces to a single space": "存在连续空格，已收敛为单空格",
 
-  "The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above above to use the formatting features.": "插件已就绪，工具栏菜单已更新。请点击上方“中文自动格式工具”选项卡以使用格式化功能。",
+  "The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above to use the formatting features.": "插件已就绪，工具栏菜单已更新。请前往上方的中文自动格式工具选项卡使用格式化功能。",
   "Nothing to apply for shapes.": "图形对象无可应用内容。",
   "Converted selection: ": "已转换选中文本：",
   "Converted punctuation in selected cells.": "已转换选中单元格内的标点符号。",
