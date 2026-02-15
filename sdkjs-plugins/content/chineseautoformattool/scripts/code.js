@@ -243,8 +243,8 @@
 
         const lines =
             editorType === "cell"
-                ? selectedText.split(/\t|\r?\n/)
-                : selectedText.split(/\r?\n/); // 不过滤空行，保持行数一致
+                ? selectedText.split(/\t|\n/)
+                : selectedText.split(/\n/); // 不过滤空行，保持行数一致
         const fixed = results.map((r) => r.fixed);
         const report = results.filter((r) => r.errors && r.errors.length > 0);
 
@@ -360,10 +360,11 @@
                 TableRowSeparator: "\n",
                 ParaSeparator: "\n",
                 TabSymbol: "\t",
-                NewLineSeparator: "\n",
+                NewLineSeparator: "\r",
             };
             plugin.executeMethod("GetSelectedText", [props], function (t) {
-                const picked = (t || "").replace(/\r\n?/g, "\n");
+                // const picked = (t || "").replace(/\r\n?/g, "\n");
+                const picked = t || "";
 
                 // 公用转换（编辑器侧，非命令体）
                 const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -380,9 +381,9 @@
                 };
 
                 if (picked.trim()) {
-                    const out = picked.split(/\t|\r?\n/).map(convertLine);
+                    const out = picked.split(/\t|\n/).map(convertLine);
                     if(out[out.length - 1] === "") out.pop();
-                    Asc.scope._lines = out;
+                    Asc.scope._lines = out.map(l => l.replace(/\r/g, "\r\n"));
                     plugin.callCommand(
                         function () {
                             if ( Asc.scope._lines && typeof Api.ReplaceTextSmart === "function") {
@@ -634,11 +635,12 @@
                 TableRowSeparator: "\n",
                 ParaSeparator: "\n",
                 TabSymbol: "\t",
-                NewLineSeparator: "\n",
+                NewLineSeparator: "\r",
             };
 
             plugin.executeMethod("GetSelectedText", [props], function (t) {
-                const picked = (t || "").replace(/\r\n?/g, "\n");
+                // const picked = (t || "").replace(/\r\n?/g, "\n");
+                const picked = t || "";
 
                 // 公用转换（编辑器侧，非命令体）
                 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -656,9 +658,9 @@
                 };
 
                 if (picked.trim()) {
-                    const out = picked.split(/\t|\r?\n/).map(convertLine);
+                    const out = picked.split(/\t|\n/).map(convertLine);
                     if(out[out.length - 1] === "") out.pop();
-                    Asc.scope._lines = out;
+                    Asc.scope._lines = out.map(l => l.replace(/\r/g, "\r\n"));
                     plugin.callCommand(
                         function () {
                             if (
@@ -890,14 +892,15 @@
                 TableRowSeparator: "\n",
                 ParaSeparator: "\n",
                 TabSymbol: "\t",
-                NewLineSeparator: "\n",
+                NewLineSeparator: "\r",
             };
 
             // —— 首选：直接取“选中文本”（Word/可选中对象的场景）
             plugin.executeMethod("GetSelectedText", [props], function (s) {
                 if (s && s.trim()) {
                     localStorage.setItem("_smart_source_type", "word");
-                    openPanel(s.replace(/\r\n?/g, "\n"));
+                    // openPanel(s.replace(/\r\n?/g, "\n"));
+                    openPanel(s);
                     return;
                 }
 
@@ -1442,9 +1445,9 @@
                         return;
                     }
 
-                    // —— Word/Excel：保持原逻辑 —— //
+                    // —— Word/Excel: Keep the original logic. Smart converter—— //
                     try {
-                        Asc.scope.convertedLines = JSON.parse(replaceResult);
+                        Asc.scope.convertedLines = JSON.parse(replaceResult).map(l => l.replace(/\r/g, "\r\n"));;
                     } catch (e) {
                         Asc.scope.convertedLines = null;
                     }
@@ -1511,7 +1514,7 @@
             }
 
             // —— Word/Excel：保持原逻辑 —— //
-            Asc.scope.convertedLines = JSON.parse(replaceResult);
+            Asc.scope.convertedLines = JSON.parse(replaceResult).map(l => l.replace(/\r/g, "\r\n"));;
             localStorage.removeItem("batchReplaceResult");
             window.Asc.plugin.callCommand(function () {
                 if (Asc.scope.convertedLines)
