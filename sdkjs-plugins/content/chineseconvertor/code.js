@@ -2,12 +2,10 @@ const tr = (s) =>
     (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.tr === "function")
         ? window.Asc.plugin.tr(s) : s;
 
-// 初始化插件
-window.Asc.plugin.init = function() {
-    // console.log("插件已初始化1");
-};
+// Initialize the plugin
+window.Asc.plugin.init = function() {};
 
-// 上下文菜单显示事件
+// Context menu display event
 Asc.plugin.attachEvent("onContextMenuShow", (options) => {
     const items = {
         guid: window.Asc.plugin.guid,
@@ -60,7 +58,16 @@ function handleTextOperation(id) {
 
 function getSelectedText(id, preselectedText = null) {
     Asc.scope.preselectedText = preselectedText;
-    window.Asc.plugin.executeMethod("GetSelectedText", [], function (data) {
+    const props = {
+        Numbering: false,
+        Math: false,
+        TableCellSeparator: "\n",
+        TableRowSeparator: "\n",
+        ParaSeparator: "\n",
+        TabSymbol: "\t",
+        NewLineSeparator: "\r",
+    };
+    window.Asc.plugin.executeMethod("GetSelectedText", [props], function (data) {
         data = data || Asc.scope.preselectedText;
         if (data && data.trim() !== '') {
             core(id, data);
@@ -124,32 +131,7 @@ function replaceTextSmart(replacementText){
 }
 
 function textSeperator(text) {
-    // Only apply list marker preservation for Word documents
-    // For cells, tabs are cell separators and should not be preserved
-    
-    // Replace tabs that follow list markers with a placeholder
-    // ONLY match list markers that appear at the start of a line (after \r\n or at text start)
-    // This prevents matching "1." in table cells followed by tab to next cell
-    const textWithPlaceholder = text.replace(
-        /(?<=^|\r\n)([0-9]+[.)]|[a-z]+[.)]|[ivxlcdm]+[.)]|[·•vü¨–○oØ▪►\-*§])\t/gim,
-        '___LIST_TAB___'
-    );
-
-    // Split only on \r\n (Windows line breaks) or \t (tabs)
-    // Match \r\n as a single unit first, then fall back to \t
-    const seperatedText = textWithPlaceholder.split(/(\r\n|\t)/)
-        .reduce((arr, item, idx, src) => {
-            // Only push actual content or empty string (for empty lines/cells)
-            // Ignore the separator itself
-            if (!/(\r\n|\t)/.test(item)) arr.push(item);
-            // If two separators in a row, push empty string
-            if (idx > 0 && /(\r\n|\t)/.test(src[idx - 1]) && /(\r\n|\t)/.test(item)) arr.push('');
-            return arr;
-        }, []);
-      
-    // Restore the list tabs (only relevant for Word documents)
-    const result = seperatedText.map(item => item.replace(/___LIST_TAB___/g, ''));
-    
+    const result = text.split(/\n/).map(line => line.replace('\r', '\n'));
     if (result.length > 0 && result[result.length - 1] === '')result.pop();
     return result;
 }

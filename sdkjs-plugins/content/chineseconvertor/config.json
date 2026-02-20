@@ -54,7 +54,7 @@
             }
         },
         "isViewer": false,
-        "EditorsSupport": ["word", "cell", "slide", "pdf"],
+        "EditorsSupport": ["word", "cell", "pdf"],
         "initDataType": "none",
         "initData": "",
         "buttons": [],
