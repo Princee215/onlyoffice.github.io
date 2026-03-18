@@ -93,10 +93,4 @@ _Quick access to conversion actions directly from the context menu._
 
 ---
 
-## 📜 License
-
-Released under the [MIT License](LICENSE).
-
----
-
 If you find this plugin helpful, please ⭐ Star, 🍴 Fork, and open Issues!
