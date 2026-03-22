@@ -79,7 +79,7 @@
   "Half-width → Full-width (letters/digits)": "半角→全角（字母/数字）",
   "Full-width → Half-width (letters/digits)": "全角→半角（字母/数字）",
 
-  "Chinese Auto-format Tool": "中文自动格式工具",
+  "Chinese Formatter": "中文格式化工具",
   "Smart Convert": "智能转换",
   "Validate Chinese typography automatically": "自动对中文文本内容进行校验",
   "Force Full-width": "强制转全角",

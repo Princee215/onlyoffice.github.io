@@ -1,8 +1,7 @@
 {
-    "name": "Chinese Auto-format Tool",
+    "name": "Chinese Formatter",
     "nameLocale": {
-        "zh": "中文自动格式工具",
-        "en":"Chinese Auto-format Tool"
+        "zh": "中文格式化工具"
     },
     "guid": "asc.{c3a4b670-9e25-41f8-9d6e-4f7d7d5e1c33}",
     "offered": "Prince",
@@ -11,8 +10,7 @@
         {
             "description": "Chinese Automatic Formatting Tool automatically formats Chinese text in accordance with modern writing standards. It adjusts punctuation styles, spacing between Chinese and Latin characters, and the use of full-width and half-width symbols to ensure clean and consistent text layout.",
             "descriptionLocale": {
-                "zh": "中文自动格式化工具根据现代书写标准自动格式化中文文本。角它调整标点样式，中文和拉丁字符之间的间距，并使用全角和半的符号，以确保干净和一致的文本布局。",
-                "en": "Chinese Automatic Formatting Tool automatically formats Chinese text in accordance with modern writing standards. It adjusts punctuation styles, spacing between Chinese and Latin characters, and the use of full-width and half-width symbols to ensure clean and consistent text layout."
+                "zh": "中文自动格式化工具根据现代书写标准自动格式化中文文本。角它调整标点样式，中文和拉丁字符之间的间距，并使用全角和半的符号，以确保干净和一致的文本布局。"
             },
             "url": "index.html",
             "icons": [

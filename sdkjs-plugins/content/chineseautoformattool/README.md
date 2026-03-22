@@ -26,11 +26,11 @@ _The plugin appears under a dedicated tab._
 
 📋 **Settings (setting.html)**  
 _Choose which symbols/rules to apply._  
-![Settings](resources/store/screenshots/screen3.png)
+![Settings](resources/store/screenshots/screenshot3.png)
 
 📝 **Format Report (report.html)**  
-![Report 1](resources/store/screenshots/screen1.png)  
-![Report 2](resources/store/screenshots/screen2.png)
+![Report 1](resources/store/screenshots/screenshot1.png)  
+![Report 2](resources/store/screenshots/screenshot2.png)
 
 ## 🛠️ How to Use
 
@@ -60,10 +60,6 @@ _Choose which symbols/rules to apply._
 
 - ✅ ONLYOFFICE Desktop Editors / Web Document Server
 - ✅ Responsive plugin panels that adapt to different window sizes
-
-## 📜 License
-
-Released under the [MIT License](LICENSE).
 
 ---
 
