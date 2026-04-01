@@ -3,7 +3,7 @@
     "nameLocale": {
         "zh": "简繁转换器"
     },
-    "offered": "Prince",
+    "offered": "Lumi",
     "version": "1.0.0",
     "guid": "asc.{beccf103-f417-49f7-9575-d1a206f60127}",
     "variations": [{
@@ -35,24 +35,21 @@
         ],
         "store": {
             "background": {
-                "light" : "#333333",
-                "dark" : "#444444"
+                "light" : "#F2EDE7",
+                "dark" : "#F2EDE7"
             },
             "screenshots": ["resources/store/screenshots/screenshot1.png", "resources/store/screenshots/screenshot2.png"],
             "icons": {
                 "light": "resources/store/icons",
                 "dark": "resources/store/icons"
             },
-            "categories": [
-                "all",
-                "recommended"
-            ]
+            "categories": ["specAbilities"]
         },
         "isViewer": false,
         "isVisual": false,
         "isModal": false,
         "isInsideMode": true,
-        "EditorsSupport": ["word", "cell", "pdf"],
+        "EditorsSupport": ["word", "cell"],
         "initDataType": "none",
         "initData": "",
         "buttons": [],
