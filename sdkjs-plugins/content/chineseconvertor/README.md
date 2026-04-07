@@ -31,7 +31,6 @@ A lightweight and practical ONLYOFFICE plugin for Chinese text conversion. It en
   - Works in:
     - Document Editor
     - Spreadsheet Editor
-    - PDF Editor
 
 ---
 
@@ -50,7 +49,7 @@ _Quick access to conversion actions directly from the context menu._
 ## 🛠️ How to Use
 
 1. Clone the repository and deploy it to an ONLYOFFICE environment that supports plugins.
-2. Open a document, spreadsheet, or PDF file.
+2. Open a document or spreadsheet file.
 3. Select the Chinese text you want to modify.
 4. Use one of the following methods:
    - Open **Chinese Converter** from the toolbar (left side panel).
@@ -68,8 +67,7 @@ _Quick access to conversion actions directly from the context menu._
 ## ✅ Supported Editors
 
 - ✅ ONLYOFFICE Document Editor  
-- ✅ ONLYOFFICE Spreadsheet Editor  
-- ✅ ONLYOFFICE PDF Editor  
+- ✅ ONLYOFFICE Spreadsheet Editor
 - ✅ Desktop Editors & Web Document Server  
 
 ---
