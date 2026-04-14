@@ -1601,7 +1601,8 @@
   }
 
   function getInfoModal(message) {
-    localStorage.setItem("info_message", message || "");
+    console.log(">>> getInfoModal ", message, window);
+    // localStorage.setItem("info_message", message || "");
     winInfo = new window.Asc.PluginWindow();
     winInfo.show({
       url: resolveUrl("panels/info.html"),
@@ -1612,5 +1613,6 @@
       EditorsSupport: ["word", "cell", "slide"],
       buttons: [{ text: tr("OK"), primary: true }],
     });
+    window.Asc.plugin.sendToPlugin("onWindowReady", { message: message });
   }
 })(window);

@@ -1,4 +1,4 @@
-Plugin-ocr uses code from the following 3rd party projects.
+Chinese Formatter uses code from the following 3rd party projects.
 
 
 1. zhlint - A linting tool for Chinese text to enforce typographic and formatting conventions. (https://github.com/zhlint-project/zhlint)

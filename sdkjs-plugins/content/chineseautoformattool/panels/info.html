@@ -2,8 +2,10 @@
 <html lang="en-US">
 <head>
   <meta charset="UTF-8" />
+  <script type="text/javascript" src="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins.js"></script>
+  <script type="text/javascript" src="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins-ui.js"></script>
+  <link rel="stylesheet" href="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins.css">
   <base href="../">
-  <script src="scripts/V1/plugins.js"></script>
   <title>Info</title>
   <style>
     body {
@@ -30,8 +32,12 @@
   </div>
   <script>
     window.Asc.plugin.init = function () {
-      document.getElementById("info_message").innerText = localStorage.getItem("info_message") || "No information available.";
+      // document.getElementById("info_message").innerText = localStorage.getItem("info_message");
     };
+
+     window.Asc.plugin.attachEvent("onWindowMessage", function (message) {
+      console.log(">>> info panel received message", message);
+    });
   </script>
 </body>
 </html>
