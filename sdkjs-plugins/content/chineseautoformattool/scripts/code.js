@@ -273,11 +273,8 @@
       return;
     }
 
-    // 供报告页与撤销/连续修改使用的共享数据
-    localStorage.setItem("zhlintReport", JSON.stringify(report, null, 2));
-    localStorage.setItem("originalLines", JSON.stringify(lines));
-    localStorage.setItem("fixedLines", JSON.stringify(fixed));
-    localStorage.setItem("currentSelectionLines", JSON.stringify(lines)); // 基线：首次进入报告即为原文
+    // Shared data for report page and undo/batch modification
+    localStorage.setItem("currentSelectionLines", JSON.stringify(lines)); // Baseline: original text on first entry to report
     localStorage.removeItem("batchReplaceResult");
     localStorage.removeItem("zhlintUndoLines");
 
@@ -288,6 +285,14 @@
       winReport = null;
     }
     winReport = new window.Asc.PluginWindow();
+    winReport.attachEvent("onWindowReportReady", function () {
+      winReport.command("onReportPageData", {
+        zhlintReport: report,
+        originalLines: lines,
+        fixedLines: fixed,
+        type: "report-data",
+      });
+    });
     winReport.show({
       url: resolveUrl("panels/report.html"),
       description: tr("Formatting report"),
@@ -356,7 +361,6 @@
           "?": "？",
           "!": "！",
         },
-        // settings: { punctuation: JSON.parse(localStorage.getItem("selectedPunctuation") || "[]") }
         settings: { punctuation: readJSON("selectedPunctuation", []) },
       };
 
@@ -639,7 +643,6 @@
           "／": "/",
         },
         // 开关：为空表示全部处理；否则只处理设置中选中的“全角目标字符”
-        // settings: { punctuation: JSON.parse(localStorage.getItem("selectedPunctuation") || "[]") }
         settings: { punctuation: readJSON("selectedPunctuation", []) },
       };
 
@@ -1370,7 +1373,7 @@
         description: tr("Settings"),
         isModal: true,
         isVisual: true,
-        size: [360, 360],
+        size: [450, 380],
         buttons: [{ text: tr("Save"), primary: false }],
         EditorsSupport: ["word", "slide", "cell"],
       });
@@ -1391,7 +1394,6 @@
 
   window.Asc.plugin.button = function (id, windowId) {
     if (closeWindowIfMatch(winInfo, windowId)) {
-      localStorage.removeItem("info_message");
       winInfo = null;
       return;
     }
@@ -1601,9 +1603,13 @@
   }
 
   function getInfoModal(message) {
-    console.log(">>> getInfoModal ", message, window);
-    // localStorage.setItem("info_message", message || "");
     winInfo = new window.Asc.PluginWindow();
+    winInfo.attachEvent("onWindowReady", function () {
+      winInfo.command("onWindowMessage", {
+        message: message || "",
+        type: "info",
+      });
+    });
     winInfo.show({
       url: resolveUrl("panels/info.html"),
       description: tr("Info"),
@@ -1613,6 +1619,5 @@
       EditorsSupport: ["word", "cell", "slide"],
       buttons: [{ text: tr("OK"), primary: true }],
     });
-    window.Asc.plugin.sendToPlugin("onWindowReady", { message: message });
   }
 })(window);

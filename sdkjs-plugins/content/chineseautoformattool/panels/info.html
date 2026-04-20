@@ -32,12 +32,13 @@
   </div>
   <script>
     window.Asc.plugin.init = function () {
-      // document.getElementById("info_message").innerText = localStorage.getItem("info_message");
+      window.Asc.plugin.sendToPlugin("onWindowReady", {});
+      window.Asc.plugin.attachEvent("onWindowMessage", function (data) {
+        if (data && data.type === "info") {
+          document.getElementById("info_message").innerText = data.message || "No information available.";
+        }
+      });
     };
-
-     window.Asc.plugin.attachEvent("onWindowMessage", function (message) {
-      console.log(">>> info panel received message", message);
-    });
   </script>
 </body>
 </html>

@@ -133,6 +133,7 @@
 
   <script>
   // ===== 小工具 =====
+  let report = [], original = [], fixed = [];
   const t = (k) => (window.Asc && window.Asc.plugin ? window.Asc.plugin.tr(k) : k);
   function escapeHTML(str){ return String(str).replace(/[&<>"'`]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[s])); }
   function showToast(text, duration = 700) {
@@ -160,15 +161,18 @@
     try { parent.postMessage({ source:'zhlint', payload }, '*'); } catch (e) {}
   }
 
-  // ===== 页面主逻辑 =====
-  (function(){
-    try { localStorage.setItem('reportCloseReason', 'open'); } catch(e){}
+    window.Asc.plugin.attachEvent("onReportPageData", function (data) {
+        if (data && data.type === "report-data") {
+            report = data.zhlintReport || [];
+            original = data.originalLines || [];
+            fixed = data.fixedLines || [];
+            main();
+        }
+    });
 
-    // 读取数据
-    const safeParse = (s,d)=>{ try { return JSON.parse(s); } catch(e){ return d; } };
-    const report     = safeParse(localStorage.getItem('zhlintReport') || '[]', []);
-    const original   = safeParse(localStorage.getItem('originalLines') || '[]', []);
-    const fixed      = safeParse(localStorage.getItem('fixedLines') || '[]', []);
+  // ===== 页面主逻辑 =====
+  function main(){
+    try { localStorage.setItem('reportCloseReason', 'open'); } catch(e){}
 
     // 顶部显示“空格策略”
     showStrategySummary();
@@ -409,8 +413,7 @@
         }
       } catch (e) { }
     });
-
-  })();
+  }
 
   // ===== 本地化钩子：把所有可见文本写回 =====
   window.Asc.plugin.onTranslate = function () {
@@ -437,12 +440,10 @@
     // 关键：翻译后重绘“策略条”和“统计徽章”
     if (window.__rerenderStrategy) window.__rerenderStrategy();
     if (window.__rerenderStat) window.__rerenderStat();
-
-
-
   };
 
   window.Asc.plugin.init = function () {
+    window.Asc.plugin.sendToPlugin("onWindowReportReady", {});
     if (typeof window.Asc.plugin.onTranslate === 'function') {
       window.Asc.plugin.onTranslate();
     }
