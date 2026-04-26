@@ -1,9 +1,8 @@
 // scripts/code.js
 (function (window, undefined) {
   // ---------------- 初始化 ----------------
-  window.Asc.plugin.init = function () {
-    // this.executeMethod("AddToolbarMenuItem", [getToolbarItems()]);
-    bindToolbarEvents.call(this);
+  window.Asc.plugin.init = function () { 
+	bindToolbarEvents.call(this);
   };
 
   // 子窗口句柄
@@ -12,7 +11,8 @@
   let winOptions = null;
   let winReport = null;
   let winInfo = null;
-  let reportApplyTimer = null; // ⬅️ 新增
+  let selectedTextToFormat = "";
+  let smart_ppt_para_counts = null;
 
   function readJSON(key, fallback) {
     try {
@@ -45,20 +45,9 @@
           sel && typeof sel.GetShapes === "function" ? sel.GetShapes() : null;
         if (!Array.isArray(shapes)) shapes = shapes ? [shapes] : [];
         if (shapes.length === 0) {
-          var pres =
-            typeof Api.GetPresentation === "function"
-              ? Api.GetPresentation()
-              : null;
-          // var slide = pres?.GetCurrentSlide?.();
-          // var all = slide?.GetAllObjects?.();
-          var slide =
-            pres && typeof pres.GetCurrentSlide === "function"
-              ? pres.GetCurrentSlide()
-              : null;
-          var all =
-            slide && typeof slide.GetAllObjects === "function"
-              ? slide.GetAllObjects()
-              : null;
+          var pres = typeof Api.GetPresentation === "function" ? Api.GetPresentation() : null;
+          var slide = pres && typeof pres.GetCurrentSlide === "function" ? pres.GetCurrentSlide() : null;
+          var all = slide && typeof slide.GetAllObjects === "function" ? slide.GetAllObjects() : null;
           if (Array.isArray(all)) shapes = all;
         }
         var stats = [];
@@ -68,10 +57,7 @@
           stats.push({ shape: i, paras: n });
         }
         Asc.scope.__stats = stats;
-      },
-      false,
-      true,
-      function () {
+      }, false, true, function () {
         getInfoModal(
           "PPT Probe: shapes=" + ((Asc.scope.__stats || []).length || 0),
         );
@@ -103,32 +89,21 @@
         var p0 = dc?.GetAllParagraphs?.()[0];
         if (p0?.Select && typeof Api.ReplaceTextSmart === "function") {
           p0.Select();
-          Api.ReplaceTextSmart(
-            ["[SMART-TEST]\n(能看到这一行说明 PPT 回填链路 OK)"],
-            "\t",
-            "\n",
-          );
+          Api.ReplaceTextSmart(["[SMART-TEST]\n(能看到这一行说明 PPT 回填链路 OK)"], "\t", "\n");
           Asc.scope.__ok = true;
         } else Asc.scope.__ok = false;
-      },
-      false,
-      true,
-      function () {
+      }, false, true, function () {
         getInfoModal(Asc.scope.__ok ? "Dry apply OK" : "Dry apply failed");
       },
     );
   };
 
-  const REPORT_CLOSE_MS = 1000;
   // 放在 (function (window, undefined) { 之后的任意顶层位置
-  const tr = (s) =>
-    window.Asc && window.Asc.plugin ? window.Asc.plugin.tr(s) : s;
+  const tr = (s) => window.Asc && window.Asc.plugin ? window.Asc.plugin.tr(s) : s;
   // —— 本地化回调：词典就绪后，刷新工具栏文本与提示 ——
   window.Asc.plugin.onTranslate = function () {
     getInfoModal(
-      tr(
-        "The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above to use the formatting features.",
-      ),
+      tr("The plugin is ready, the toolbar menu has been updated. Please go to the Chinese-Auto Format Tool tab above to use the formatting features.")
     );
     // ……你原来的 setText / 提示等本地化代码（如果有）……
     const items = getToolbarItems(); // 这里的 tabs[0].text 要用 tr("Chinese Formatter")
@@ -142,90 +117,6 @@
     }
   };
 
-  // report.html → 主窗口：接收 Asc.PluginWindow 发来的消息
-  // 仅替换 onMessage 这一段
-  window.Asc.plugin.onMessage = function (data) {
-    if (!data) return;
-
-    if (data.type === "apply-now" && Array.isArray(data.lines)) {
-      const plugin = window.Asc.plugin;
-      const isPPT = plugin.info && plugin.info.editorType === "slide";
-
-      if (isPPT) {
-        // —— PPT 专用：把“行”折成按形状的块，然后一形状一块回填 —— //
-        try {
-          const raw = JSON.stringify(data.lines);
-          const blocks =
-            typeof parseBlocks === "function"
-              ? parseBlocks(raw)
-              : (function foldByBlank(lines) {
-                  const out = [];
-                  let buf = [];
-                  for (const ln of lines) {
-                    if (ln === "") {
-                      if (buf.length) {
-                        out.push(buf.join("\n"));
-                        buf = [];
-                      }
-                    } else buf.push(ln);
-                  }
-                  if (buf.length) out.push(buf.join("\n"));
-                  return out.map((b) => b.replace(/\n+$/, "").trim());
-                })(data.lines);
-
-          if (typeof applyPptBlocks === "function" && blocks.length) {
-            applyPptBlocks(blocks); // 内部自带 callCommand 与段落选中
-          } else {
-            plugin.executeMethod("ShowError", [
-              tr("Nothing to apply for shapes."),
-            ]);
-          }
-
-          // 迟一点关掉报告窗，避免与命令体回调冲突
-          setTimeout(() => {
-            try {
-              if (winReport) {
-                winReport.close();
-                winReport = null;
-              }
-            } catch (e) {}
-          }, 800);
-        } catch (e) {
-          plugin.executeMethod("ShowError", ["PPT apply failed: " + e.message]);
-        }
-        return; // ✅ 已处理 PPT
-      }
-
-      // —— Word / Excel 仍走原逻辑 —— //
-      Asc.scope.convertedLines = data.lines;
-      window.Asc.plugin.callCommand(
-        function () {
-          if (Asc.scope.convertedLines) {
-            Api.ReplaceTextSmart(Asc.scope.convertedLines);
-          }
-        },
-        false,
-        true,
-        function () {
-          try {
-            localStorage.setItem(
-              "currentSelectionLines",
-              JSON.stringify(data.lines),
-            );
-          } catch (e) {}
-          setTimeout(() => {
-            if (winReport) {
-              try {
-                winReport.close();
-              } catch (e) {}
-              winReport = null;
-            }
-          }, 800);
-        },
-      );
-    }
-  };
-
   // 生成绝对 URL
   function resolveUrl(path) {
     try {
@@ -236,12 +127,12 @@
   }
 
   // ---------------- 统一进入报告流程 ----------------
-  function proceedToReport(selectedText) {
+  function proceedToReport() {
     const editorType = window.Asc.plugin.info.editorType || "word";
     let results;
     try {
       // Depends on runFormatCheck(text) in scripts/formatChecker.js
-      results = runFormatCheck(selectedText, editorType);
+      results = runFormatCheck(selectedTextToFormat, editorType);
     } catch (e) {
       window.Asc.plugin.executeMethod("ShowError", [
         tr("Detection failed: formatChecker.js is missing or has an error"),
@@ -249,10 +140,9 @@
       return;
     }
 
-    const lines =
-      editorType === "cell"
-        ? selectedText.split(/\t|\n/)
-        : selectedText.split(/\n/); // 不过滤空行，保持行数一致
+    const lines = editorType === "cell"
+        ? selectedTextToFormat.split(/\t|\n/)
+        : selectedTextToFormat.split(/\n/); // Do not filter empty lines; preserve line count consistency
     const fixed = results.map((r) => r.fixed);
     const report = results.filter((r) => r.errors && r.errors.length > 0);
 
@@ -273,17 +163,7 @@
       return;
     }
 
-    // Shared data for report page and undo/batch modification
-    localStorage.setItem("currentSelectionLines", JSON.stringify(lines)); // Baseline: original text on first entry to report
-    localStorage.removeItem("batchReplaceResult");
-    localStorage.removeItem("zhlintUndoLines");
-
-    if (winReport) {
-      try {
-        winReport.close();
-      } catch (e) {}
-      winReport = null;
-    }
+	closeWindowIfMatch(winReport);
     winReport = new window.Asc.PluginWindow();
     winReport.attachEvent("onWindowReportReady", function () {
       winReport.command("onReportPageData", {
@@ -291,8 +171,10 @@
         originalLines: lines,
         fixedLines: fixed,
         type: "report-data",
+        base: lines, // 供 PPT 用的基线数据（按行分割的字符串数组），report.html 里不直接用，传给 applyPptBlocks 处理成 shape-based 块后再用
       });
     });
+    winReport.attachEvent("onWindowReportMessage", batchReplaceResultHandler);
     winReport.show({
       url: resolveUrl("panels/report.html"),
       description: tr("Formatting report"),
@@ -307,29 +189,36 @@
     });
   }
 
-  // 打开选项页后轮询等待结果
-  function watchSpaceOptions(selectedText) {
-    localStorage.removeItem("spaceOptReady");
-
-    const timer = setInterval(() => {
-      const ready = localStorage.getItem("spaceOptReady") === "1";
-      const open = localStorage.getItem("spaceOptOpen") === "1";
-
-      if (ready) {
-        clearInterval(timer);
-        try {
-          if (winOptions) {
-            winOptions.close();
-            winOptions = null;
-          }
-        } catch (e) {}
-        localStorage.removeItem("spaceOptReady");
-        localStorage.removeItem("spaceOptOpen");
-        proceedToReport(selectedText);
-      } else if (!open) {
-        clearInterval(timer);
+  function batchReplaceResultHandler(data) {
+    if (!data) return;
+    const isPPT = window.Asc.plugin.info && window.Asc.plugin.info.editorType === "slide";
+    if (isPPT) {
+      // 防御式：可以重复调用，不会有问题
+      if (winReport) {
+        closeWindowIfMatch(winReport);
+        winReport = null;
       }
-    }, 80);
+      try {
+        startPptApplyWatcher(data);
+      } catch (e) {}
+      return;
+    }
+    try {
+        Asc.scope.convertedLines = JSON.parse(data);
+    } catch (e) {
+      	Asc.scope.convertedLines = null;
+    }
+    window.Asc.plugin.callCommand(
+      function () {
+        if (Asc.scope.convertedLines)
+          Api.ReplaceTextSmart(Asc.scope.convertedLines, "\t", "\r");
+      }, false, true, function () {
+        if (winReport) {
+          closeWindowIfMatch(winReport);
+          winReport = null;
+        }
+      },
+    );
   }
 
   // ---------------- 绑定工具栏按钮 ----------------
@@ -375,7 +264,6 @@
         NewLineSeparator: "\r",
       };
       plugin.executeMethod("GetSelectedText", [props], function (t) {
-        // const picked = (t || "").replace(/\r\n?/g, "\n");
         const picked = t || "";
 
         // 公用转换（编辑器侧，非命令体）
@@ -395,19 +283,13 @@
         if (picked.trim()) {
           const out = picked.split(/\t|\n/).map(convertLine);
           if (out[out.length - 1] === "") out.pop();
-          Asc.scope._lines = out.map((l) => l.replace(/\r/g, "\r\n"));
+          Asc.scope._lines = out;
           plugin.callCommand(
             function () {
-              if (
-                Asc.scope._lines &&
-                typeof Api.ReplaceTextSmart === "function"
-              ) {
-                Api.ReplaceTextSmart(Asc.scope._lines); // 保留原样式地替换
+              if (Asc.scope._lines && typeof Api.ReplaceTextSmart === "function") {
+                Api.ReplaceTextSmart(Asc.scope._lines, "\t", "\r"); // 保留原样式地替换
               }
-            },
-            false,
-            true,
-            function () {
+            }, false, true, function () {
               getInfoModal(
                 tr("Converted selection: ") + out.length + tr(" line(s)."),
               );
@@ -423,17 +305,17 @@
               return x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             }
             function convertIn(line) {
-              if (!line) return line;
-              var m = Asc.scope.__punct__.map;
-              var on = Asc.scope.__punct__.settings.punctuation || [];
-              var v = line.replace(/(?:\.{3,}|…+)/g, "……");
-              for (var k in m) {
-                if (!m.hasOwnProperty(k)) continue;
-                var full = m[k];
-                if (on.length === 0 || on.indexOf(full) !== -1)
-                  v = v.replace(new RegExp(escIn(k), "g"), full);
-              }
-              return v;
+				if (!line) return line;
+				var m = Asc.scope.__punct__.map;
+				var on = Asc.scope.__punct__.settings.punctuation || [];
+				var v = line.replace(/(?:\.{3,}|…+)/g, "……");
+              	for (var k in m) {
+					if (!m.hasOwnProperty(k)) continue;
+					var full = m[k];
+					if (on.length === 0 || on.indexOf(full) !== -1)
+						v = v.replace(new RegExp(escIn(k), "g"), full);
+					}
+              	return v;
             }
 
             try {
@@ -442,11 +324,7 @@
                 var rng = ws && ws.GetSelection && ws.GetSelection();
                 if (!rng && typeof Api.GetSelection === "function")
                   rng = Api.GetSelection();
-                if (
-                  rng &&
-                  typeof rng.GetValue === "function" &&
-                  typeof rng.SetValue === "function"
-                ) {
+                if ( rng && typeof rng.GetValue === "function" && typeof rng.SetValue === "function" ) {
                   var val = rng.GetValue(); // string 或 二维数组 :contentReference[oaicite:4]{index=4}
                   var changed = false,
                     out;
@@ -507,26 +385,18 @@
                   return v;
                 }
 
-                var sel =
-                  typeof Api.GetSelection === "function"
-                    ? Api.GetSelection()
+                var sel = typeof Api.GetSelection === "function"
+					? Api.GetSelection()
                     : null; // 选区（演示）:contentReference[oaicite:6]{index=6}
-                var shapes =
-                  sel && typeof sel.GetShapes === "function"
+                var shapes = sel && typeof sel.GetShapes === "function"
                     ? sel.GetShapes()
                     : null; // 被选中的图形
                 if (!Array.isArray(shapes)) shapes = shapes ? [shapes] : [];
 
                 if (shapes.length === 0) {
                   // 兜底：取当前页所有对象
-                  var pres =
-                    typeof Api.GetPresentation === "function"
-                      ? Api.GetPresentation()
-                      : null;
-                  var slide =
-                    pres && typeof pres.GetCurrentSlide === "function"
-                      ? pres.GetCurrentSlide()
-                      : null;
+                  var pres = typeof Api.GetPresentation === "function" ? Api.GetPresentation() : null;
+                  var slide = pres && typeof pres.GetCurrentSlide === "function" ? pres.GetCurrentSlide() : null;
                   if (slide && typeof slide.GetAllObjects === "function") {
                     var all = slide.GetAllObjects();
                     if (Array.isArray(all)) {
@@ -534,12 +404,8 @@
                       for (var i = 0; i < all.length; i++) {
                         var o = all[i];
                         try {
-                          if (
-                            o &&
-                            typeof o.IsSelected === "function" &&
-                            o.IsSelected()
-                          )
-                            chosen.push(o);
+                          	if (o && typeof o.IsSelected === "function" && o.IsSelected())
+                            	chosen.push(o);
                         } catch (e) {}
                       }
                       shapes = chosen.length ? chosen : all;
@@ -568,8 +434,7 @@
                   var changed = false;
                   for (var pIdx = 0; pIdx < paras.length; pIdx++) {
                     var p = paras[pIdx];
-                    var old =
-                      p && typeof p.GetText === "function"
+                    var old = p && typeof p.GetText === "function"
                         ? p.GetText({
                             Numbering: false,
                             Math: false,
@@ -581,24 +446,18 @@
 
                     if (/[,\.\-:;'"$¥£¢<>()[\]/?!]|…/.test(old)) {
                       var neo = convertIn(old);
-                      if (
-                        neo !== old &&
-                        typeof p.Select === "function" &&
-                        typeof Api.ReplaceTextSmart === "function"
-                      ) {
-                        p.Select(); // 选中段落
-                        Api.ReplaceTextSmart([neo], "\t", "\n"); // 保留样式地替换 :contentReference[oaicite:10]{index=10}
-                        changed = true;
-                      }
+						if ( neo !== old && typeof p.Select === "function" &&
+							typeof Api.ReplaceTextSmart === "function" ) {
+							p.Select(); // 选中段落
+							Api.ReplaceTextSmart([neo], "\t", "\n"); // 保留样式地替换 :contentReference[oaicite:10]{index=10}
+							changed = true;
+						}
                     }
                   }
                   if (changed) hit++;
                 }
                 return hit > 0;
-              },
-              false,
-              true,
-              function (returnValue) {
+              }, false, true, function (returnValue) {
                 if (returnValue)
                   getInfoModal(
                     tr("Converted punctuation for text in shape(s)."),
@@ -658,7 +517,6 @@
       };
 
       plugin.executeMethod("GetSelectedText", [props], function (t) {
-        // const picked = (t || "").replace(/\r\n?/g, "\n");
         const picked = t || "";
 
         // 公用转换（编辑器侧，非命令体）
@@ -679,19 +537,13 @@
         if (picked.trim()) {
           const out = picked.split(/\t|\n/).map(convertLine);
           if (out[out.length - 1] === "") out.pop();
-          Asc.scope._lines = out.map((l) => l.replace(/\r/g, "\r\n"));
+          Asc.scope._lines = out;
           plugin.callCommand(
             function () {
-              if (
-                Asc.scope._lines &&
-                typeof Api.ReplaceTextSmart === "function"
-              ) {
-                Api.ReplaceTextSmart(Asc.scope._lines); // 保留原样式地替换
+              if ( Asc.scope._lines && typeof Api.ReplaceTextSmart === "function" ) {
+                Api.ReplaceTextSmart(Asc.scope._lines, "\t", "\r"); // 保留原样式地替换
               }
-            },
-            false,
-            true,
-            function () {
+            }, false, true, function () {
               getInfoModal(
                 tr("Converted selection: ") + out.length + tr(" line(s)."),
               );
@@ -727,11 +579,7 @@
                 var rng = ws && ws.GetSelection && ws.GetSelection();
                 if (!rng && typeof Api.GetSelection === "function")
                   rng = Api.GetSelection();
-                if (
-                  rng &&
-                  typeof rng.GetValue === "function" &&
-                  typeof rng.SetValue === "function"
-                ) {
+                if ( rng && typeof rng.GetValue === "function" && typeof rng.SetValue === "function") {
                   var val = rng.GetValue(); // 可能是 string 或 二维数组
                   var changed = false,
                     out;
@@ -764,10 +612,7 @@
                 }
               }
             } catch (e) {}
-          },
-          false,
-          true,
-          function (returnValue) {
+          }, false, true, function (returnValue) {
             if (returnValue) {
               getInfoModal(tr("Converted punctuation in selected cells."));
               return; // Excel 成功，结束
@@ -793,26 +638,18 @@
                   return v;
                 }
 
-                var sel =
-                  typeof Api.GetSelection === "function"
+                var sel = typeof Api.GetSelection === "function"
                     ? Api.GetSelection()
                     : null; // 选区（演示）
-                var shapes =
-                  sel && typeof sel.GetShapes === "function"
+                var shapes = sel && typeof sel.GetShapes === "function"
                     ? sel.GetShapes()
                     : null; // 被选中的图形
                 if (!Array.isArray(shapes)) shapes = shapes ? [shapes] : [];
 
                 if (shapes.length === 0) {
                   // 兜底：取当前页所有对象
-                  var pres =
-                    typeof Api.GetPresentation === "function"
-                      ? Api.GetPresentation()
-                      : null;
-                  var slide =
-                    pres && typeof pres.GetCurrentSlide === "function"
-                      ? pres.GetCurrentSlide()
-                      : null;
+                  var pres = typeof Api.GetPresentation === "function" ? Api.GetPresentation() : null;
+                  var slide = pres && typeof pres.GetCurrentSlide === "function" ? pres.GetCurrentSlide() : null;
                   if (slide && typeof slide.GetAllObjects === "function") {
                     var all = slide.GetAllObjects();
                     if (Array.isArray(all)) {
@@ -820,11 +657,7 @@
                       for (var i = 0; i < all.length; i++) {
                         var o = all[i];
                         try {
-                          if (
-                            o &&
-                            typeof o.IsSelected === "function" &&
-                            o.IsSelected()
-                          )
+                          if ( o && typeof o.IsSelected === "function" && o.IsSelected())
                             chosen.push(o);
                         } catch (e) {}
                       }
@@ -854,8 +687,7 @@
                   var changed = false;
                   for (var pIdx = 0; pIdx < paras.length; pIdx++) {
                     var p = paras[pIdx];
-                    var old =
-                      p && typeof p.GetText === "function"
+                    var old = p && typeof p.GetText === "function"
                         ? p.GetText({
                             Numbering: false,
                             Math: false,
@@ -866,16 +698,10 @@
                     if (!old) continue;
 
                     // 命中全角/省略号才处理
-                    if (
-                      /[，。；：‘’“”《》（）？！／—－…]/.test(old) ||
-                      /…|\.{3,}/.test(old)
-                    ) {
+                    if ( /[，。；：‘’“”《》（）？！／—－…]/.test(old) || /…|\.{3,}/.test(old) ) {
                       var neo = convertIn(old);
-                      if (
-                        neo !== old &&
-                        typeof p.Select === "function" &&
-                        typeof Api.ReplaceTextSmart === "function"
-                      ) {
+                      if ( neo !== old && typeof p.Select === "function" && 
+						typeof Api.ReplaceTextSmart === "function" ) {
                         p.Select(); // 选中段落
                         Api.ReplaceTextSmart([neo], "\t", "\n"); // 保留样式地替换
                         changed = true;
@@ -885,14 +711,9 @@
                   if (changed) hit++;
                 }
                 return hit > 0;
-              },
-              false,
-              true,
-              function (returnValue) {
+              }, false, true, function (returnValue) {
                 if (returnValue)
-                  getInfoModal(
-                    tr("Converted punctuation for text in shape(s)."),
-                  );
+                  getInfoModal(tr("Converted punctuation for text in shape(s)."));
                 // Otherwise, remain silent.
               },
             );
@@ -903,7 +724,6 @@
 
     // C. 智能转换 → 空格策略 → 进入报告
     this.attachToolbarMenuClickEvent("zhineng", function () {
-      // have to explore this ---------------------------------------
       const plugin = window.Asc.plugin;
       const resolveUrl = window.resolveUrl || ((p) => p);
 
@@ -921,19 +741,13 @@
       // —— 首选：直接取“选中文本”（Word/可选中对象的场景）
       plugin.executeMethod("GetSelectedText", [props], function (s) {
         if (s && s.trim()) {
-          localStorage.setItem("_smart_source_type", "word");
-          // openPanel(s.replace(/\r\n?/g, "\n"));
           openPanel(s);
           return;
         }
 
         // 兜底：获取“选中内容的纯文本”
-        plugin.executeMethod(
-          "GetSelectedContent",
-          [{ type: "text" }],
-          function (s2) {
+        plugin.executeMethod( "GetSelectedContent", [{ type: "text" }], function (s2) {
             if (s2 && s2.trim()) {
-              localStorage.setItem("_smart_source_type", "word");
               openPanel(s2.replace(/\r\n?/g, "\n"));
               return;
             }
@@ -943,6 +757,8 @@
               function () {
                 var resultText = "";
                 var sourceType = "";
+                var shapeTexts = [];
+                var shapeIndices = [];
 
                 // Excel：按选区取值（单元格 or 二维数组），序列化为行列文本
                 try {
@@ -985,23 +801,13 @@
                       return null;
                     }
 
-                    var sel =
-                      typeof Api.GetSelection === "function"
-                        ? Api.GetSelection()
-                        : null;
-                    var shapes =
-                      sel && typeof sel.GetShapes === "function"
-                        ? sel.GetShapes()
-                        : null;
+                    var sel = typeof Api.GetSelection === "function" ? Api.GetSelection() : null;
+                    var shapes = sel && typeof sel.GetShapes === "function" ? sel.GetShapes() : null;
                     if (!Array.isArray(shapes)) shapes = shapes ? [shapes] : [];
 
                     if (shapes.length === 0) {
-                      var pres =
-                        typeof Api.GetPresentation === "function"
-                          ? Api.GetPresentation()
-                          : null;
-                      var slide =
-                        pres && typeof pres.GetCurrentSlide === "function"
+                      var pres = typeof Api.GetPresentation === "function" ? Api.GetPresentation() : null;
+                      var slide = pres && typeof pres.GetCurrentSlide === "function"
                           ? pres.GetCurrentSlide()
                           : null;
                       if (slide && typeof slide.GetAllObjects === "function") {
@@ -1010,11 +816,7 @@
                           var chosen = [];
                           for (var i = 0; i < all.length; i++) {
                             try {
-                              if (
-                                all[i] &&
-                                typeof all[i].IsSelected === "function" &&
-                                all[i].IsSelected()
-                              )
+                              if (all[i] && typeof all[i].IsSelected === "function" && all[i].IsSelected())
                                 chosen.push(all[i]);
                             } catch (e) {}
                           }
@@ -1022,11 +824,6 @@
                         }
                       }
                     }
-
-                    // 保存形状信息与“每个形状的段落数”（供其它模式使用；本方案只用 shapeIndices）
-                    var shapeTexts = [];
-                    var shapeIndices = [];
-                    var paraCounts = [];
 
                     for (var sIdx = 0; sIdx < shapes.length; sIdx++) {
                       var dc = getContent(shapes[sIdx]);
@@ -1048,10 +845,7 @@
                               })
                             : "";
                         // 统一去掉段尾的各种换行符：\r \n U+2028/U+2029 U+0085 垂直制表 \x0B
-                        txt = String(txt).replace(
-                          /[\r\t\n\u2028\u2029\u0085\x0B]+$/g,
-                          "",
-                        );
+                        txt = String(txt).replace(/[\r\t\n\u2028\u2029\u0085\x0B]+$/g, "");
 
                         if (txt) {
                           if (shapeText) shapeText += "\n";
@@ -1062,73 +856,40 @@
                       if (shapeText.trim()) {
                         shapeTexts.push(shapeText);
                         shapeIndices.push(sIdx);
-                        paraCounts.push(paras.length);
                       }
                     }
 
                     if (shapeTexts.length > 0) {
                       sourceType = "ppt";
                       resultText = shapeTexts.join("\n\n"); // 形状间空行分隔（用于回填时分块）
-                      Asc.scope._pptShapeCount = shapeTexts.length;
-                      Asc.scope._pptShapeIndices = shapeIndices;
-                      Asc.scope._pptParaCounts = paraCounts;
                     }
                   } catch (e) {
                     console.error(">>> PPT 异常:", e);
                   }
                 }
 
-                // 写入 localStorage，让外层读取
                 try {
                   if (resultText) {
-                    localStorage.setItem("_smart_temp_text", resultText);
-                    localStorage.setItem("_smart_ready", "1");
-                    localStorage.setItem("_smart_source_type", sourceType);
-
                     if (sourceType === "ppt") {
-                      localStorage.setItem(
-                        "_smart_ppt_shape_count",
-                        Asc.scope._pptShapeCount.toString(),
-                      );
-                      localStorage.setItem(
-                        "_smart_ppt_shape_indices",
-                        JSON.stringify(Asc.scope._pptShapeIndices),
-                      );
-                      localStorage.setItem(
-                        "_smart_ppt_para_counts",
-                        JSON.stringify(Asc.scope._pptParaCounts),
-                      );
+                      smart_ppt_para_counts = shapeIndices;
                     }
+                    return { ready: true, text: resultText };
                   } else {
-                    localStorage.setItem("_smart_ready", "0");
+                    return { ready: false };
                   }
                 } catch (e) {
-                  console.error(">>> localStorage 写入失败:", e);
-                  localStorage.setItem("_smart_ready", "0");
+                  return { ready: false };
                 }
-              },
-              false,
-              true,
-              function () {
-                var ready = localStorage.getItem("_smart_ready");
-
-                if (ready === "1") {
-                  var text = localStorage.getItem("_smart_temp_text");
-
-                  localStorage.removeItem("_smart_temp_text");
-                  localStorage.removeItem("_smart_ready");
-
+              }, false, true, function (returnValue) {
+                if (returnValue && returnValue.ready) {
+                  const text = returnValue.text;
                   if (text && text.trim()) {
                     openPanel(text);
                   } else {
-                    plugin.executeMethod("ShowError", [
-                      tr("Please select the text to diagnose!"),
-                    ]);
+                    plugin.executeMethod("ShowError", [tr("Please select the text to diagnose!")]);
                   }
                 } else {
-                  plugin.executeMethod("ShowError", [
-                    tr("Please select the text to diagnose!"),
-                  ]);
+                  plugin.executeMethod("ShowError", [tr("Please select the text to diagnose!")]);
                 }
               },
             );
@@ -1138,15 +899,8 @@
 
       // —— 打开空格策略选项面板 ——
       function openPanel(text) {
-        localStorage.setItem("smart_source_text", text);
-        localStorage.removeItem("spaceOptReady");
-
-        if (winOptions) {
-          try {
-            winOptions.close();
-          } catch (e) {}
-          winOptions = null;
-        }
+        selectedTextToFormat = text;
+		closeWindowIfMatch(winOptions);
 
         winOptions = new window.Asc.PluginWindow();
         winOptions.show({
@@ -1161,44 +915,14 @@
             { text: tr("Cancel"), primary: false },
           ],
         });
-
-        // 你的既有逻辑
-        watchSpaceOptions(text);
-
-        // ★ 如果这次来源是 PPT：启动轮询，等 report.html 把处理结果放进 localStorage
-        if (localStorage.getItem("_smart_source_type") === "ppt") {
-          startPptApplyWatcher();
-        }
       }
 
-      // ========== 以下为 PPT 回填的轻量实现：localStorage + 轮询 + 一次性写回 ==========
+      // ========== Below is a lightweight implementation for PPT write-back: localStorage + polling + one-time write-back ==========
 
-      // 轮询：等 report.html 把处理结果塞进 localStorage（_smart_apply_lines）
-      function startPptApplyWatcher() {
-        // 先清掉旧的
-        if (window.__pptApplyTimer) {
-          try {
-            clearInterval(window.__pptApplyTimer);
-          } catch (e) {}
-        }
-        localStorage.removeItem("_smart_apply_lines");
-
-        window.__pptApplyTimer = setInterval(() => {
-          const raw = localStorage.getItem("_smart_apply_lines");
-          if (!raw) return; // 还没准备好
-
-          // 拿到了就消费掉 & 停表
-          localStorage.removeItem("_smart_apply_lines");
-          try {
-            clearInterval(window.__pptApplyTimer);
-          } catch (e) {}
-          window.__pptApplyTimer = null;
-
-          const blocks = parseBlocks(raw);
-
-          // 真正回填
-          applyPptBlocks(blocks);
-        }, 120);
+      // Polling: wait for report.html to store the processed result into localStorage (_smart_apply_lines)
+      function startPptApplyWatcher(raw) {
+        if(!data) return;
+        applyPptBlocks(parseBlocks(raw));
       }
 
       // 把行或字符串折叠成“形状块”：
@@ -1251,8 +975,7 @@
 
         const nBlocks = Asc.scope._pptBlocks.length; // 仅用于外层日志
 
-        plugin.callCommand(
-          function () {
+        plugin.callCommand(function () {
             function getContent(draw) {
               try {
                 if (draw && typeof draw.GetContent === "function")
@@ -1267,24 +990,12 @@
             var blocks = Asc.scope._pptBlocks || [];
 
             // 取本页形状（优先已选，否则整页）
-            var sel =
-              typeof Api.GetSelection === "function"
-                ? Api.GetSelection()
-                : null;
-            var shapes =
-              sel && typeof sel.GetShapes === "function"
-                ? sel.GetShapes()
-                : null;
+            var sel = typeof Api.GetSelection === "function" ? Api.GetSelection() : null;
+            var shapes = sel && typeof sel.GetShapes === "function" ? sel.GetShapes() : null;
             if (!Array.isArray(shapes)) shapes = shapes ? [shapes] : [];
             if (shapes.length === 0) {
-              var pres =
-                typeof Api.GetPresentation === "function"
-                  ? Api.GetPresentation()
-                  : null;
-              var slide =
-                pres && typeof pres.GetCurrentSlide === "function"
-                  ? pres.GetCurrentSlide()
-                  : null;
+              var pres = typeof Api.GetPresentation === "function" ? Api.GetPresentation() : null;
+              var slide = pres && typeof pres.GetCurrentSlide === "function" ? pres.GetCurrentSlide() : null;
               if (slide && typeof slide.GetAllObjects === "function") {
                 var all = slide.GetAllObjects();
                 if (Array.isArray(all)) {
@@ -1302,9 +1013,7 @@
             // 取提取时记录的顺序；没有就按当前顺序
             var idxs = [];
             try {
-              idxs = JSON.parse(
-                localStorage.getItem("_smart_ppt_shape_indices") || "[]",
-              );
+              idxs = smart_ppt_para_counts || [];
             } catch (e) {}
             if (!Array.isArray(idxs) || !idxs.length)
               idxs = shapes.map(function (_, i) {
@@ -1329,18 +1038,10 @@
                 applied++;
               }
             }
-
             Asc.scope._pptAppliedShapes = applied;
-          },
-          false,
-          true,
-          function () {
+          }, false, true, function () {
             try {
-              getInfoModal(
-                "Applied to " +
-                  (Asc.scope._pptAppliedShapes || 0) +
-                  " shape(s).",
-              );
+              getInfoModal("Applied to " + (Asc.scope._pptAppliedShapes || 0) + " shape(s).");
             } catch (e) {}
             try {
               if (typeof winReport !== "undefined" && winReport) {
@@ -1348,10 +1049,7 @@
                 winReport = null;
               }
             } catch (e) {}
-            // 清缓存（避免下次错位）
-            localStorage.removeItem("_smart_ppt_shape_count");
-            localStorage.removeItem("_smart_ppt_shape_indices");
-            localStorage.removeItem("_smart_ppt_para_counts");
+            smart_ppt_para_counts = null;
             // 清掉 blocks
             Asc.scope._pptBlocks = null;
           },
@@ -1361,12 +1059,7 @@
 
     // D. 设置
     this.attachToolbarMenuClickEvent("setting", function () {
-      if (winSetting) {
-        try {
-          winSetting.close();
-        } catch (e) {}
-        winSetting = null;
-      }
+      closeWindowIfMatch(winSetting);
       winSetting = new window.Asc.PluginWindow();
       winSetting.show({
         url: resolveUrl("panels/setting.html"),
@@ -1382,175 +1075,42 @@
 
   // ---------------- Unify window close callback ----------------
   // Helper function to close window if it matches
-  function closeWindowIfMatch(win, windowId) {
-    if (win && windowId === win.id) {
-      try {
-        win.close();
-      } catch (e) {}
-      return true;
-    }
-    return false;
+  function closeWindowIfMatch(win) {
+    try {
+      win.close();
+    } catch (e) {}
   }
 
   window.Asc.plugin.button = function (id, windowId) {
-    if (closeWindowIfMatch(winInfo, windowId)) {
+    if (winInfo && winInfo.id == windowId) {
+      closeWindowIfMatch(winInfo);
       winInfo = null;
       return;
     }
-    if (closeWindowIfMatch(winSetting, windowId)) {
+    if (winSetting && winSetting.id == windowId) {
+      closeWindowIfMatch(winSetting);
       winSetting = null;
       return;
     }
 
     if (winOptions && windowId === winOptions.id) {
-      // ⬇️ Added: id === 0 represents Confirm; id === 1 represents Cancel.
+      // ⬇️ Added: id === 0 represents Confirm; id === 1 represents Cancel
       if (id === 0) {
-        localStorage.setItem("spaceOptReady", "1"); // 交给后续逻辑判断/推进
-      } else {
-        localStorage.removeItem("spaceOptReady");
+        if (selectedTextToFormat.trim()) {
+          proceedToReport();
+        }
       }
-
-      try {
-        winOptions.close();
-      } catch (e) {}
+      closeWindowIfMatch(winOptions);
       winOptions = null;
-
-      const ok = localStorage.getItem("spaceOptReady") === "1";
-      const selectedText = localStorage.getItem("smart_source_text") || "";
-      localStorage.removeItem("spaceOptReady");
-
-      if (ok && selectedText.trim()) {
-        proceedToReport(selectedText);
-      }
-      return;
     }
 
     if (winReport && windowId === winReport.id) {
       if (id === 0) {
-        localStorage.setItem("reportApplyNow", "1"); // Trigger child page execution
-
-        // ✅ 新增：兜底轮询等待子页产出结果（避免消息通道被拦截时卡住）
-        if (reportApplyTimer) {
-          clearInterval(reportApplyTimer);
-          reportApplyTimer = null;
-        }
-        reportApplyTimer = setInterval(() => {
-          // 子窗已经被关就停止
-          if (!winReport) {
-            clearInterval(reportApplyTimer);
-            reportApplyTimer = null;
-            return;
-          }
-
-          const ready = localStorage.getItem("reportApplyReady") === "1";
-          if (!ready) return;
-
-          clearInterval(reportApplyTimer);
-          reportApplyTimer = null;
-          localStorage.removeItem("reportApplyReady");
-
-          const replaceResult = localStorage.getItem("batchReplaceResult");
-          if (!replaceResult) return;
-
-          const isPPT =
-            window.Asc.plugin.info &&
-            window.Asc.plugin.info.editorType === "slide";
-          if (isPPT) {
-            // —— PPT：桥接给按形状写回 —— //
-            localStorage.setItem("_smart_apply_lines", replaceResult); // 触发 startPptApplyWatcher → applyPptBlocks
-            try {
-              if (winReport) {
-                winReport.close();
-                winReport = null;
-              }
-            } catch (e) {}
-            // 防御式：可以重复调用，不会有问题
-            try {
-              startPptApplyWatcher();
-            } catch (e) {}
-            return;
-          }
-
-          // —— Word/Excel: Keep the original logic. Smart converter—— //
-          try {
-            Asc.scope.convertedLines = JSON.parse(replaceResult).map((l) =>
-              l.replace(/\r/g, "\r\n"),
-            );
-          } catch (e) {
-            Asc.scope.convertedLines = null;
-          }
-          window.Asc.plugin.callCommand(
-            function () {
-              if (Asc.scope.convertedLines)
-                Api.ReplaceTextSmart(Asc.scope.convertedLines);
-            },
-            false,
-            true,
-            function () {
-              try {
-                localStorage.setItem("currentSelectionLines", replaceResult);
-              } catch (e) {}
-              if (winReport) {
-                try {
-                  winReport.close();
-                } catch (e) {}
-                winReport = null;
-              }
-            },
-            REPORT_CLOSE_MS,
-          );
-        }, 1000);
-
-        return; // 交给上面的轮询/消息回调来收尾
+        winReport.command("onReportWindowClosed");
+      } else {
+        closeWindowIfMatch(winReport);
+        winReport = null;
       }
-
-      try {
-        winReport.close();
-      } catch (e) {}
-      winReport = null;
-
-      const closeReason = localStorage.getItem("reportCloseReason") || "open";
-      localStorage.removeItem("reportCloseReason");
-
-      const replaceResult = localStorage.getItem("batchReplaceResult");
-
-      // New feature: If the user closes the dialog by clicking × without clicking “Confirm and Save”, an error message is displayed.
-      if (closeReason === "closed_without_save") {
-        localStorage.removeItem("batchReplaceResult"); // 清理潜在脏数据
-        if (typeof showNotice === "function") {
-          // The second parameter true indicates the ‘error/danger’ style (as per your project’s convention).
-          showNotice("你没有保存任何需要修改的内容", true);
-        } else {
-          alert("你没有保存任何需要修改的内容");
-        }
-        return;
-      }
-
-      // 正常保存关闭：应用替换（安全兜底：缺结果就静默返回）
-      if (!replaceResult) return;
-
-      const isPPT2 =
-        window.Asc.plugin.info && window.Asc.plugin.info.editorType === "slide";
-      if (isPPT2) {
-        // —— PPT：同样桥接到形状回填 —— //
-        localStorage.setItem("_smart_apply_lines", replaceResult);
-        localStorage.removeItem("batchReplaceResult");
-        try {
-          startPptApplyWatcher();
-        } catch (e) {}
-        return;
-      }
-
-      // —— Word/Excel：保持原逻辑 —— //
-      Asc.scope.convertedLines = JSON.parse(replaceResult).map((l) =>
-        l.replace(/\r/g, "\r\n"),
-      );
-      localStorage.removeItem("batchReplaceResult");
-      window.Asc.plugin.callCommand(function () {
-        if (Asc.scope.convertedLines)
-          Api.ReplaceTextSmart(Asc.scope.convertedLines);
-      });
-      return;
     }
   };
 
@@ -1603,6 +1163,7 @@
   }
 
   function getInfoModal(message) {
+	closeWindowIfMatch(winInfo);
     winInfo = new window.Asc.PluginWindow();
     winInfo.attachEvent("onWindowReady", function () {
       winInfo.command("onWindowMessage", {
